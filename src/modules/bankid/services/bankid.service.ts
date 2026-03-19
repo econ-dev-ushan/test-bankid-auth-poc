@@ -170,6 +170,7 @@ export class BankIdService {
         snapshot.state === 'complete'
           ? this.bankIdCompletionService.normalizeCompletionData(
               collectResponse.completionData ?? null,
+              order.bankIdOrderRef,
             )
           : order.completionData,
     });

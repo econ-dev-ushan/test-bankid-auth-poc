@@ -79,6 +79,7 @@ export const bankIdHealthSchema = z.object({
 
 export type BankIdFlow = z.infer<typeof bankIdFlowSchema>
 export type BankIdStartRequest = z.infer<typeof bankIdStartRequestSchema>
+export type BankIdCompletion = z.infer<typeof bankIdCompletionSchema>
 export type BankIdStartResponse = z.infer<typeof bankIdStartResponseSchema>
 export type BankIdStatusResponse = z.infer<typeof bankIdStatusResponseSchema>
 export type BankIdHealth = z.infer<typeof bankIdHealthSchema>

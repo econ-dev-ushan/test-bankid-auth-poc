@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { BankIdEntryCard } from '../components/BankIdEntryCard'
 import { BankIdErrorPanel } from '../components/BankIdErrorPanel'
 import { BankIdFoundationStatus } from '../components/BankIdFoundationStatus'
+import { BankIdResultPanel } from '../components/BankIdResultPanel'
 import { BankIdStageCard } from '../components/BankIdStageCard'
 import { BankIdStatusPanel } from '../components/BankIdStatusPanel'
 import { useBankIdFoundation } from '../hooks/useBankIdFoundation'
@@ -12,16 +13,10 @@ import type { BankIdFlow, BankIdStartResponse } from '../lib/bankidTypes'
 
 const nextStages = [
   {
-    stage: 'Stage 5',
-    title: 'Completion rendering',
-    description:
-      'Successful authentication payload rendering will be refined into a dedicated success result view.',
-  },
-  {
     stage: 'Stage 6',
     title: 'Cancel and fallback',
     description:
-      'Cancel handling and recovery paths from same-device to QR flow will build on this state machine.',
+      'Cancel handling and recovery paths from same-device to QR flow will build on this completion-aware flow.',
   },
 ]
 
@@ -63,6 +58,8 @@ export function OnboardingRoute() {
   const isStartingQr = startMutation.isPending && startMutation.variables === 'qr'
   const startDisabled =
     foundationQuery.isLoading || foundationQuery.isError || startMutation.isPending
+  const completion = statusQuery.data?.completion ?? activeOrder?.completion ?? null
+  const isComplete = (statusQuery.data?.state ?? activeOrder?.status.state) === 'complete'
 
   return (
     <main className="min-h-screen px-5 py-10 sm:px-8 lg:px-12">
@@ -77,8 +74,8 @@ export function OnboardingRoute() {
                 Building the backend-owned BankID flow one safe stage at a time.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-slate-200/82">
-                Phase 4 adds the collect state machine so both same-device and QR flows
-                refresh through the backend and stop automatically on terminal states.
+                Phase 5 turns a completed BankID flow into a normalized result view with
+                structured identity data and a raw completion payload section for the POC.
               </p>
             </div>
             <div className="rounded-[28px] border border-amber-200/18 bg-slate-950/32 p-6">
@@ -86,9 +83,9 @@ export function OnboardingRoute() {
                 What is live now
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-200/84">
-                <li>Backend collect polling with local state transitions and throttling</li>
-                <li>Frontend polling for both same-device and QR flows</li>
-                <li>Automatic terminal-state stop behavior for completed or failed orders</li>
+                <li>Backend completion normalization from BankID completion data</li>
+                <li>Frontend success view with normalized user details</li>
+                <li>Raw completion payload retained for POC-level inspection</li>
               </ul>
             </div>
           </div>
@@ -117,7 +114,16 @@ export function OnboardingRoute() {
           />
         </section>
 
-        {activeOrder ? (
+        {activeOrder && isComplete && completion ? (
+          <BankIdResultPanel
+            orderId={activeOrder.orderId}
+            flow={activeOrder.flow}
+            completion={completion}
+            onRestart={resetStartState}
+          />
+        ) : null}
+
+        {activeOrder && (!isComplete || !completion) ? (
           <BankIdStatusPanel
             order={activeOrder}
             status={statusQuery.data}
