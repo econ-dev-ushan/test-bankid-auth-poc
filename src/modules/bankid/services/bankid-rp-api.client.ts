@@ -7,6 +7,8 @@ import type {
   BankIdAuthApiRequest,
   BankIdAuthApiResponse,
   BankIdClientDiagnostics,
+  BankIdCollectApiRequest,
+  BankIdCollectApiResponse,
   BankIdSystemCallContext,
 } from '../types/bankid.types';
 
@@ -15,6 +17,12 @@ const bankIdAuthResponseSchema = z.object({
   autoStartToken: z.string().min(1),
   qrStartToken: z.string().min(1),
   qrStartSecret: z.string().min(1),
+});
+
+const bankIdCollectResponseSchema = z.object({
+  status: z.enum(['pending', 'complete', 'failed']),
+  hintCode: z.string().nullable().optional(),
+  completionData: z.unknown().optional(),
 });
 
 @Injectable()
@@ -77,6 +85,14 @@ export class BankIdRpApiClient implements OnModuleInit {
   ): Promise<BankIdAuthApiResponse> {
     const response = await this.postJson('/auth', payload, context);
     return bankIdAuthResponseSchema.parse(response);
+  }
+
+  async collect(
+    payload: BankIdCollectApiRequest,
+    context: BankIdSystemCallContext,
+  ): Promise<BankIdCollectApiResponse> {
+    const response = await this.postJson('/collect', payload, context);
+    return bankIdCollectResponseSchema.parse(response);
   }
 
   private isEnabled() {

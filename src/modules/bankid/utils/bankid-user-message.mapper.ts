@@ -6,12 +6,19 @@ export function mapHintCodeToUserMessage(hintCode: string | null | undefined) {
       return 'BankID app could not be found on this device.';
     case 'started':
       return 'BankID is starting.';
+    case 'processing':
+      return 'BankID is processing your authentication.';
     case 'userSign':
       return 'Confirm your identity in the BankID app.';
     case 'userMrtd':
       return 'Scan your passport or national ID with BankID.';
     case 'expiredTransaction':
       return 'This BankID session has expired. Please restart the flow.';
+    case 'userCancel':
+    case 'cancelled':
+      return 'The BankID authentication was cancelled.';
+    case 'startFailed':
+      return 'BankID could not start. Please try again.';
     case 'certificateErr':
       return 'BankID test credentials need attention before this flow can run.';
     default:

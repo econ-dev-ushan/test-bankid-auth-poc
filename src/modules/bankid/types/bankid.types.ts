@@ -80,6 +80,16 @@ export interface BankIdAuthApiResponse {
   qrStartSecret: string;
 }
 
+export interface BankIdCollectApiRequest {
+  orderRef: string;
+}
+
+export interface BankIdCollectApiResponse {
+  status: 'pending' | 'complete' | 'failed';
+  hintCode?: string | null;
+  completionData?: unknown;
+}
+
 export interface BankIdSystemCallContext {
   correlationId: string;
   operation: 'auth' | 'collect' | 'cancel';

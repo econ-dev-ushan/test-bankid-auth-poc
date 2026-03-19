@@ -6,10 +6,13 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
+import { BankIdCompletionService } from './bankid-completion.service';
 import { mapHintCodeToUserMessage } from '../utils/bankid-user-message.mapper';
 import { buildBankIdLaunchUrl } from '../utils/bankid-launch-url';
+import { mapCollectStatusToSnapshot } from '../utils/bankid-status.mapper';
 import type {
   BankIdAuthApiResponse,
+  BankIdCollectApiResponse,
   BankIdFlow,
   BankIdLocalOrder,
 } from '../types/bankid.types';
@@ -27,6 +30,7 @@ export class BankIdService {
     private readonly bankIdRpApiClient: BankIdRpApiClient,
     private readonly bankIdOrderStoreService: BankIdOrderStoreService,
     private readonly bankIdQrService: BankIdQrService,
+    private readonly bankIdCompletionService: BankIdCompletionService,
   ) {}
 
   getFoundationStatus() {
@@ -104,7 +108,9 @@ export class BankIdService {
       throw new NotFoundException('BankID order not found.');
     }
 
-    return this.toStatusResponse(order);
+    const refreshedOrder = await this.refreshOrderStatus(order);
+
+    return this.toStatusResponse(refreshedOrder);
   }
 
   private isBankIdEnabled() {
@@ -135,6 +141,161 @@ export class BankIdService {
       throw new BadGatewayException(
         'Unable to start BankID authentication right now.',
       );
+    }
+  }
+
+  private async refreshOrderStatus(order: BankIdLocalOrder) {
+    if (order.status !== 'pending') {
+      return order;
+    }
+
+    if (!this.shouldCollectNow(order)) {
+      return order;
+    }
+
+    const collectResponse = this.isBankIdEnabled()
+      ? await this.collectLiveStatus(order)
+      : this.collectSimulatedStatus(order);
+
+    const snapshot = mapCollectStatusToSnapshot(collectResponse);
+    const now = new Date().toISOString();
+    const updatedOrder = this.bankIdOrderStoreService.update(order.orderId, {
+      status: snapshot.state,
+      hintCode: snapshot.hintCode,
+      message: snapshot.message,
+      lastCollectedAt: now,
+      completedAt: snapshot.state === 'complete' ? now : order.completedAt,
+      cancelledAt: snapshot.state === 'cancelled' ? now : order.cancelledAt,
+      completionData:
+        snapshot.state === 'complete'
+          ? this.bankIdCompletionService.normalizeCompletionData(
+              collectResponse.completionData ?? null,
+            )
+          : order.completionData,
+    });
+
+    this.logger.log(
+      JSON.stringify({
+        event: this.getCollectEventName(snapshot.state),
+        correlationId: order.correlationId,
+        orderId: order.orderId,
+        flow: order.flow,
+        state: snapshot.state,
+        hintCode: snapshot.hintCode,
+      }),
+    );
+
+    return updatedOrder ?? order;
+  }
+
+  private shouldCollectNow(order: BankIdLocalOrder) {
+    if (!order.lastCollectedAt) {
+      return true;
+    }
+
+    const collectIntervalMs = this.configService.getOrThrow<number>(
+      'BANKID_COLLECT_INTERVAL_MS',
+    );
+
+    return (
+      Date.now() - new Date(order.lastCollectedAt).getTime() >= collectIntervalMs
+    );
+  }
+
+  private async collectLiveStatus(order: BankIdLocalOrder) {
+    try {
+      return await this.bankIdRpApiClient.collect(
+        { orderRef: order.bankIdOrderRef },
+        {
+          correlationId: order.correlationId,
+          operation: 'collect',
+          orderId: order.orderId,
+        },
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown BankID collect error';
+
+      this.logger.error(
+        JSON.stringify({
+          event: 'auth_collect_failed',
+          correlationId: order.correlationId,
+          orderId: order.orderId,
+          reason: message,
+        }),
+      );
+
+      throw new BadGatewayException(
+        'Unable to refresh BankID authentication status right now.',
+      );
+    }
+  }
+
+  private collectSimulatedStatus(order: BankIdLocalOrder): BankIdCollectApiResponse {
+    const elapsedSeconds = Math.floor(
+      (Date.now() - new Date(order.startedAt).getTime()) / 1000,
+    );
+
+    if (elapsedSeconds < 2) {
+      return {
+        status: 'pending',
+        hintCode: 'outstandingTransaction',
+      };
+    }
+
+    if (elapsedSeconds < 5) {
+      return {
+        status: 'pending',
+        hintCode: order.flow === 'same-device' ? 'started' : 'outstandingTransaction',
+      };
+    }
+
+    if (elapsedSeconds < 8) {
+      return {
+        status: 'pending',
+        hintCode: 'userSign',
+      };
+    }
+
+    return {
+      status: 'complete',
+      completionData: this.createSimulatedCompletionData(order),
+    };
+  }
+
+  private createSimulatedCompletionData(order: BankIdLocalOrder) {
+    return {
+      user: {
+        personalNumber: '199001011234',
+        name: 'Test User',
+        givenName: 'Test',
+        surname: 'User',
+      },
+      device: {
+        ipAddress: '127.0.0.1',
+      },
+      bankId: {
+        orderRef: order.bankIdOrderRef,
+        completionData: {
+          simulated: true,
+          completedAt: new Date().toISOString(),
+        },
+      },
+    };
+  }
+
+  private getCollectEventName(
+    state: BankIdLocalOrder['status'],
+  ): 'auth_collect_pending' | 'auth_completed' | 'auth_failed' | 'auth_cancelled' {
+    switch (state) {
+      case 'complete':
+        return 'auth_completed';
+      case 'failed':
+        return 'auth_failed';
+      case 'cancelled':
+        return 'auth_cancelled';
+      default:
+        return 'auth_collect_pending';
     }
   }
 

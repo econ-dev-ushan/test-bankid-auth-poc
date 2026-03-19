@@ -5,7 +5,7 @@ import { getBankIdOrderStatus } from '../api/bankidApi'
 export function useBankIdStatus(
   orderId: string | null,
   enabled: boolean,
-  intervalMs = 1000,
+  intervalMs = 2000,
 ) {
   return useQuery({
     queryKey: ['bankid', 'orders', orderId],

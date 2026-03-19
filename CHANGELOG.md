@@ -17,6 +17,7 @@
 - Backend now also logs outbound BankID RP API calls with minimal structured metadata for request start, completion, and failure events.
 - Phase 3 now generates animated QR frames on the backend, exposes `GET /api/bankid/orders/:orderId`, and refreshes QR rendering on the frontend without exposing QR secrets.
 - Backend BankID TLS failures now log targeted diagnostic hints for common certificate-chain, PKCS#12, and passphrase setup errors.
+- Phase 4 now refreshes BankID orders through `collect`, persists normalized state transitions, and stops frontend polling automatically on terminal states.
 
 ### Docs
 - Recorded request-level backend logging as an ongoing convention for future BankID feature implementations.

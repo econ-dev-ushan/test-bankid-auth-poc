@@ -12,10 +12,16 @@ import type { BankIdFlow, BankIdStartResponse } from '../lib/bankidTypes'
 
 const nextStages = [
   {
-    stage: 'Stage 4+',
-    title: 'Polling, cancel, completion',
+    stage: 'Stage 5',
+    title: 'Completion rendering',
     description:
-      'Order lifecycle, fallback handling, and final authenticated payload rendering will build on this foundation.',
+      'Successful authentication payload rendering will be refined into a dedicated success result view.',
+  },
+  {
+    stage: 'Stage 6',
+    title: 'Cancel and fallback',
+    description:
+      'Cancel handling and recovery paths from same-device to QR flow will build on this state machine.',
   },
 ]
 
@@ -24,10 +30,12 @@ export function OnboardingRoute() {
   const startMutation = useBankIdStart()
   const [activeOrder, setActiveOrder] = useState<BankIdStartResponse | null>(null)
   const [startError, setStartError] = useState<string | null>(null)
-  const qrStatusQuery = useBankIdStatus(
+  const statusQuery = useBankIdStatus(
     activeOrder?.orderId ?? null,
-    activeOrder?.flow === 'qr',
-    activeOrder?.qr?.refreshIntervalMs ?? 1000,
+    !!activeOrder,
+    activeOrder?.flow === 'qr'
+      ? (activeOrder.qr?.refreshIntervalMs ?? 1000)
+      : (foundationQuery.data?.collectIntervalMs ?? 2000),
   )
 
   async function handleStart(flow: BankIdFlow) {
@@ -69,8 +77,8 @@ export function OnboardingRoute() {
                 Building the backend-owned BankID flow one safe stage at a time.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-slate-200/82">
-                Phase 3 adds backend-owned animated QR support so another-device BankID
-                authentication can update safely on <code>/onboarding</code>.
+                Phase 4 adds the collect state machine so both same-device and QR flows
+                refresh through the backend and stop automatically on terminal states.
               </p>
             </div>
             <div className="rounded-[28px] border border-amber-200/18 bg-slate-950/32 p-6">
@@ -78,9 +86,9 @@ export function OnboardingRoute() {
                 What is live now
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-200/84">
-                <li>Dedicated backend auth-start endpoint and local order persistence</li>
-                <li>Animated QR frames generated on the backend from BankID start artifacts</li>
-                <li>Frontend QR polling that refreshes the displayed code without exposing secrets</li>
+                <li>Backend collect polling with local state transitions and throttling</li>
+                <li>Frontend polling for both same-device and QR flows</li>
+                <li>Automatic terminal-state stop behavior for completed or failed orders</li>
               </ul>
             </div>
           </div>
@@ -112,8 +120,19 @@ export function OnboardingRoute() {
         {activeOrder ? (
           <BankIdStatusPanel
             order={activeOrder}
-            status={qrStatusQuery.data}
+            status={statusQuery.data}
             onRestart={resetStartState}
+          />
+        ) : null}
+
+        {statusQuery.isError ? (
+          <BankIdErrorPanel
+            message={
+              statusQuery.error instanceof Error
+                ? statusQuery.error.message
+                : 'Could not refresh BankID order status.'
+            }
+            onDismiss={resetStartState}
           />
         ) : null}
 

@@ -9,8 +9,15 @@ interface CollectStatusInput {
   hintCode?: string | null;
 }
 
-function mapState(status: CollectStatusInput['status']): BankIdOrderState {
-  switch (status) {
+function mapState(input: CollectStatusInput): BankIdOrderState {
+  if (
+    input.status === 'failed' &&
+    (input.hintCode === 'userCancel' || input.hintCode === 'cancelled')
+  ) {
+    return 'cancelled';
+  }
+
+  switch (input.status) {
     case 'complete':
       return 'complete';
     case 'failed':
@@ -24,7 +31,7 @@ export function mapCollectStatusToSnapshot(
   input: CollectStatusInput,
 ): BankIdStatusSnapshot {
   const hintCode = input.hintCode ?? null;
-  const state = mapState(input.status);
+  const state = mapState(input);
 
   return {
     state,
