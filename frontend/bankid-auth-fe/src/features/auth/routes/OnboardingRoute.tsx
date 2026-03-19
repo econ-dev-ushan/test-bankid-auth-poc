@@ -14,10 +14,10 @@ import type { BankIdFlow, BankIdStartResponse } from '../lib/bankidTypes'
 
 const nextStages = [
   {
-    stage: 'Stage 7',
-    title: 'Tests and refinements',
+    stage: 'Stage 8',
+    title: 'Persistence and hardening',
     description:
-      'Broader frontend coverage, cancel edge cases, and polish can build on the full user flow now in place.',
+      'The next increment can replace the in-memory order store, tighten production safeguards, and keep the staged rollout moving.',
   },
 ]
 
@@ -113,8 +113,8 @@ export function OnboardingRoute() {
                 Building the backend-owned BankID flow one safe stage at a time.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-slate-200/82">
-                Phase 6 adds cancellation and recovery paths so a pending BankID session can
-                be stopped cleanly and same-device users can fall back to QR when needed.
+                Phase 7 hardens the BankID flow with backend e2e coverage, frontend route
+                tests, and clearer error messages from backend failures.
               </p>
             </div>
             <div className="rounded-[28px] border border-amber-200/18 bg-slate-950/32 p-6">
@@ -122,9 +122,9 @@ export function OnboardingRoute() {
                 What is live now
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-200/84">
-                <li>Backend cancel endpoint with normalized cancelled state</li>
-                <li>Frontend cancel action for pending orders</li>
-                <li>Same-device fallback path that restarts directly into QR</li>
+                <li>Backend e2e coverage for health, start, status, and cancel flow regressions</li>
+                <li>Frontend route coverage for start, success, cancel, and QR fallback states</li>
+                <li>HTTP error parsing that surfaces backend messages instead of generic status codes</li>
               </ul>
             </div>
           </div>

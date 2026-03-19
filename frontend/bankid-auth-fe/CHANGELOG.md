@@ -13,3 +13,4 @@
 - Phase 4 now polls order status for both same-device and QR flows and stops automatically on terminal states.
 - Phase 5 now shows a dedicated success screen with normalized identity details and the raw completion payload for POC debugging.
 - Phase 6 now supports cancelling pending orders and retrying same-device failures through a direct QR fallback action.
+- Phase 7 now adds Vitest route coverage for the onboarding flow, improves HTTP error messaging, and updates the page copy to reflect the new hardening stage.
