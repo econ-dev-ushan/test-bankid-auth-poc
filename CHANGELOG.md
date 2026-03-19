@@ -19,6 +19,7 @@
 - Backend BankID TLS failures now log targeted diagnostic hints for common certificate-chain, PKCS#12, and passphrase setup errors.
 - Phase 4 now refreshes BankID orders through `collect`, persists normalized state transitions, and stops frontend polling automatically on terminal states.
 - Phase 5 now normalizes completion data on the backend and renders a dedicated success/result view on the frontend with both structured identity details and raw POC payload output.
+- Phase 6 now exposes order cancellation, persists cancelled state transitions, and adds frontend fallback from same-device launch to QR retry.
 
 ### Docs
 - Recorded request-level backend logging as an ongoing convention for future BankID feature implementations.

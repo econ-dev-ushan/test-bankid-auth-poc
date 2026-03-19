@@ -90,6 +90,10 @@ export interface BankIdCollectApiResponse {
   completionData?: unknown;
 }
 
+export interface BankIdCancelApiRequest {
+  orderRef: string;
+}
+
 export interface BankIdSystemCallContext {
   correlationId: string;
   operation: 'auth' | 'collect' | 'cancel';

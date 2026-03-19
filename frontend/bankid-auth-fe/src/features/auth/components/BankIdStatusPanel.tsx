@@ -6,9 +6,19 @@ interface BankIdStatusPanelProps {
   order: BankIdStartResponse
   status?: BankIdStatusResponse
   onRestart: () => void
+  onCancel?: () => void
+  onUseQrFallback?: () => void
+  cancelling?: boolean
 }
 
-export function BankIdStatusPanel({ order, status, onRestart }: BankIdStatusPanelProps) {
+export function BankIdStatusPanel({
+  order,
+  status,
+  onRestart,
+  onCancel,
+  onUseQrFallback,
+  cancelling = false,
+}: BankIdStatusPanelProps) {
   const displayState = status?.state ?? order.status.state
   const displayHintCode = status?.hintCode ?? order.status.hintCode
   const displayMessage = status?.message ?? order.status.message
@@ -20,13 +30,34 @@ export function BankIdStatusPanel({ order, status, onRestart }: BankIdStatusPane
       title={order.flow === 'same-device' ? 'Same-device flow started' : 'QR flow started'}
       description={displayMessage}
       footer={
-        <button
-          type="button"
-          onClick={onRestart}
-          className="rounded-full border border-white/16 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-white/28 hover:bg-white/6"
-        >
-          Start over
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={onRestart}
+            className="rounded-full border border-white/16 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-white/28 hover:bg-white/6"
+          >
+            Start over
+          </button>
+          {displayState === 'pending' && onCancel ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={cancelling}
+              className="rounded-full border border-rose-200/24 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200/40 hover:bg-rose-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {cancelling ? 'Cancelling...' : 'Cancel'}
+            </button>
+          ) : null}
+          {order.flow === 'same-device' && displayState !== 'complete' && onUseQrFallback ? (
+            <button
+              type="button"
+              onClick={onUseQrFallback}
+              className="rounded-full border border-amber-200/24 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:border-amber-200/40 hover:bg-amber-300/10"
+            >
+              Use QR instead
+            </button>
+          ) : null}
+        </div>
       }
     >
       <dl className="grid gap-4 text-sm text-slate-200/82 sm:grid-cols-2">
@@ -59,6 +90,9 @@ export function BankIdStatusPanel({ order, status, onRestart }: BankIdStatusPane
           >
             Open BankID
           </a>
+          <p className="mt-4 text-xs leading-5 text-emerald-100/78">
+            If the BankID app does not open or this device path fails, switch to the QR fallback.
+          </p>
         </div>
       ) : null}
 

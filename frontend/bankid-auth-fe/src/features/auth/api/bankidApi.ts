@@ -22,3 +22,8 @@ export async function getBankIdOrderStatus(orderId: string, signal?: AbortSignal
   const response = await getJson(`/api/bankid/orders/${orderId}`, { signal })
   return bankIdStatusResponseSchema.parse(response)
 }
+
+export async function cancelBankIdOrder(orderId: string) {
+  const response = await postJson(`/api/bankid/orders/${orderId}/cancel`, {})
+  return bankIdStatusResponseSchema.parse(response)
+}

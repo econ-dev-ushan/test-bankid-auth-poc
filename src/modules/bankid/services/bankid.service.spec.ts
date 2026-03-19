@@ -132,4 +132,25 @@ describe('BankIdService', () => {
     expect(completeStatus.state).toBe('complete');
     expect(completeStatus.qr).toBeUndefined();
   });
+
+  it('cancels a pending order and returns cancelled state', async () => {
+    const orderStore = new BankIdOrderStoreService();
+    const qrService = new BankIdQrService(configService);
+    const service = new BankIdService(
+      configService,
+      bankIdRpApiClient,
+      orderStore,
+      qrService,
+      completionService,
+    );
+
+    const response = await service.startAuth({ flow: 'same-device' }, '127.0.0.1');
+    const cancelled = await service.cancelOrder(response.orderId, {
+      reason: 'user requested',
+    });
+
+    expect(cancelled.state).toBe('cancelled');
+    expect(cancelled.hintCode).toBe('userCancel');
+    expect(cancelled.message).toBe('The BankID authentication was cancelled.');
+  });
 });

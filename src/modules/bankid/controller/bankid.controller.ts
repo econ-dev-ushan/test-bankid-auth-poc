@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
+import { CancelRequestDto } from '../dto/cancel.request.dto';
 import { HealthResponseDto } from '../dto/health.response.dto';
 import { StartAuthRequestDto } from '../dto/start-auth.request.dto';
 import { StartAuthResponseDto } from '../dto/start-auth.response.dto';
@@ -26,6 +27,14 @@ export class BankIdController {
   @Get('orders/:orderId')
   getOrderStatus(@Param('orderId') orderId: string): Promise<StatusResponseDto> {
     return this.bankIdService.getOrderStatus(orderId);
+  }
+
+  @Post('orders/:orderId/cancel')
+  cancelOrder(
+    @Param('orderId') orderId: string,
+    @Body() body: CancelRequestDto,
+  ): Promise<StatusResponseDto> {
+    return this.bankIdService.cancelOrder(orderId, body);
   }
 
   private resolveEndUserIp(request: Request) {

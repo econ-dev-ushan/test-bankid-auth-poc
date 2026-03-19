@@ -12,10 +12,12 @@ import { buildBankIdLaunchUrl } from '../utils/bankid-launch-url';
 import { mapCollectStatusToSnapshot } from '../utils/bankid-status.mapper';
 import type {
   BankIdAuthApiResponse,
+  BankIdCancelApiRequest,
   BankIdCollectApiResponse,
   BankIdFlow,
   BankIdLocalOrder,
 } from '../types/bankid.types';
+import { CancelRequestDto } from '../dto/cancel.request.dto';
 import { StartAuthRequestDto } from '../dto/start-auth.request.dto';
 import { BankIdOrderStoreService } from './bankid-order-store.service';
 import { BankIdQrService } from './bankid-qr.service';
@@ -111,6 +113,52 @@ export class BankIdService {
     const refreshedOrder = await this.refreshOrderStatus(order);
 
     return this.toStatusResponse(refreshedOrder);
+  }
+
+  async cancelOrder(orderId: string, _input?: CancelRequestDto) {
+    const order = this.bankIdOrderStoreService.get(orderId);
+
+    if (!order) {
+      throw new NotFoundException('BankID order not found.');
+    }
+
+    if (order.status !== 'pending') {
+      return this.toStatusResponse(order);
+    }
+
+    this.logger.log(
+      JSON.stringify({
+        event: 'auth_cancel_requested',
+        correlationId: order.correlationId,
+        orderId: order.orderId,
+        flow: order.flow,
+      }),
+    );
+
+    if (this.isBankIdEnabled()) {
+      await this.cancelLiveOrder(order);
+    }
+
+    const now = new Date().toISOString();
+    const cancelledOrder = this.bankIdOrderStoreService.update(order.orderId, {
+      status: 'cancelled',
+      hintCode: 'userCancel',
+      message: mapHintCodeToUserMessage('userCancel'),
+      cancelledAt: now,
+      lastCollectedAt: now,
+    });
+
+    this.logger.log(
+      JSON.stringify({
+        event: 'auth_cancelled',
+        correlationId: order.correlationId,
+        orderId: order.orderId,
+        flow: order.flow,
+        state: 'cancelled',
+      }),
+    );
+
+    return this.toStatusResponse(cancelledOrder ?? order);
   }
 
   private isBankIdEnabled() {
@@ -228,6 +276,36 @@ export class BankIdService {
 
       throw new BadGatewayException(
         'Unable to refresh BankID authentication status right now.',
+      );
+    }
+  }
+
+  private async cancelLiveOrder(order: BankIdLocalOrder) {
+    try {
+      const payload: BankIdCancelApiRequest = {
+        orderRef: order.bankIdOrderRef,
+      };
+
+      await this.bankIdRpApiClient.cancel(payload, {
+        correlationId: order.correlationId,
+        operation: 'cancel',
+        orderId: order.orderId,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown BankID cancel error';
+
+      this.logger.error(
+        JSON.stringify({
+          event: 'auth_cancel_failed',
+          correlationId: order.correlationId,
+          orderId: order.orderId,
+          reason: message,
+        }),
+      );
+
+      throw new BadGatewayException(
+        'Unable to cancel BankID authentication right now.',
       );
     }
   }

@@ -7,6 +7,7 @@ import type {
   BankIdAuthApiRequest,
   BankIdAuthApiResponse,
   BankIdClientDiagnostics,
+  BankIdCancelApiRequest,
   BankIdCollectApiRequest,
   BankIdCollectApiResponse,
   BankIdSystemCallContext,
@@ -93,6 +94,13 @@ export class BankIdRpApiClient implements OnModuleInit {
   ): Promise<BankIdCollectApiResponse> {
     const response = await this.postJson('/collect', payload, context);
     return bankIdCollectResponseSchema.parse(response);
+  }
+
+  async cancel(
+    payload: BankIdCancelApiRequest,
+    context: BankIdSystemCallContext,
+  ): Promise<void> {
+    await this.postJson('/cancel', payload, context);
   }
 
   private isEnabled() {
