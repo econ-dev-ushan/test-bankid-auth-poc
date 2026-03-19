@@ -68,3 +68,20 @@ export interface BankIdClientDiagnostics {
   certificateLoaded: boolean;
   caLoaded: boolean;
 }
+
+export interface BankIdAuthApiRequest {
+  endUserIp: string;
+}
+
+export interface BankIdAuthApiResponse {
+  orderRef: string;
+  autoStartToken: string;
+  qrStartToken: string;
+  qrStartSecret: string;
+}
+
+export interface BankIdSystemCallContext {
+  correlationId: string;
+  operation: 'auth' | 'collect' | 'cancel';
+  orderId?: string;
+}

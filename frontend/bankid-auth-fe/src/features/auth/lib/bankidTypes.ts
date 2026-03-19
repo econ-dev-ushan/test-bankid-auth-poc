@@ -2,6 +2,9 @@ import { z } from 'zod'
 
 export const bankIdFlowSchema = z.enum(['same-device', 'qr'])
 export const bankIdStateSchema = z.enum(['pending', 'complete', 'failed', 'cancelled'])
+export const bankIdStartRequestSchema = z.object({
+  flow: bankIdFlowSchema,
+})
 
 export const bankIdStatusSchema = z.object({
   state: bankIdStateSchema,
@@ -75,6 +78,7 @@ export const bankIdHealthSchema = z.object({
 })
 
 export type BankIdFlow = z.infer<typeof bankIdFlowSchema>
+export type BankIdStartRequest = z.infer<typeof bankIdStartRequestSchema>
 export type BankIdStartResponse = z.infer<typeof bankIdStartResponseSchema>
 export type BankIdStatusResponse = z.infer<typeof bankIdStatusResponseSchema>
 export type BankIdHealth = z.infer<typeof bankIdHealthSchema>

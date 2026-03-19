@@ -1,13 +1,15 @@
+import { useState } from 'react'
+
+import { BankIdEntryCard } from '../components/BankIdEntryCard'
+import { BankIdErrorPanel } from '../components/BankIdErrorPanel'
 import { BankIdFoundationStatus } from '../components/BankIdFoundationStatus'
 import { BankIdStageCard } from '../components/BankIdStageCard'
+import { BankIdStatusPanel } from '../components/BankIdStatusPanel'
+import { useBankIdFoundation } from '../hooks/useBankIdFoundation'
+import { useBankIdStart } from '../hooks/useBankIdStart'
+import type { BankIdFlow, BankIdStartResponse } from '../lib/bankidTypes'
 
 const nextStages = [
-  {
-    stage: 'Stage 2',
-    title: 'Start auth flow',
-    description:
-      'Same-device and QR start actions will call the backend auth endpoint and return normalized launch data.',
-  },
   {
     stage: 'Stage 3',
     title: 'Animated QR support',
@@ -23,6 +25,37 @@ const nextStages = [
 ]
 
 export function OnboardingRoute() {
+  const foundationQuery = useBankIdFoundation()
+  const startMutation = useBankIdStart()
+  const [activeOrder, setActiveOrder] = useState<BankIdStartResponse | null>(null)
+  const [startError, setStartError] = useState<string | null>(null)
+
+  async function handleStart(flow: BankIdFlow) {
+    setStartError(null)
+    setActiveOrder(null)
+
+    try {
+      const response = await startMutation.mutateAsync(flow)
+      setActiveOrder(response)
+    } catch (error) {
+      setStartError(
+        error instanceof Error ? error.message : 'Unknown BankID start error',
+      )
+    }
+  }
+
+  function resetStartState() {
+    setActiveOrder(null)
+    setStartError(null)
+    startMutation.reset()
+  }
+
+  const isStartingSameDevice =
+    startMutation.isPending && startMutation.variables === 'same-device'
+  const isStartingQr = startMutation.isPending && startMutation.variables === 'qr'
+  const startDisabled =
+    foundationQuery.isLoading || foundationQuery.isError || startMutation.isPending
+
   return (
     <main className="min-h-screen px-5 py-10 sm:px-8 lg:px-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
@@ -36,8 +69,8 @@ export function OnboardingRoute() {
                 Building the backend-owned BankID flow one safe stage at a time.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-slate-200/82">
-                Stage 1 establishes the contracts, configuration, and feature boundaries for
-                same-device and QR-based authentication on <code>/onboarding</code>.
+                Phase 2 is now focused on actually starting same-device and QR-based
+                authentication from <code>/onboarding</code> through our backend.
               </p>
             </div>
             <div className="rounded-[28px] border border-amber-200/18 bg-slate-950/32 p-6">
@@ -45,9 +78,9 @@ export function OnboardingRoute() {
                 What is live now
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-200/84">
-                <li>Dedicated backend BankID module and config validation</li>
-                <li>Frontend React Query provider and typed API layer</li>
-                <li>Safe health contract to verify the foundation end to end</li>
+                <li>Dedicated backend auth-start endpoint and local order persistence</li>
+                <li>Frontend same-device and QR start actions using React Query</li>
+                <li>Initial pending-state rendering before polling and animated QR support</li>
               </ul>
             </div>
           </div>
@@ -55,7 +88,36 @@ export function OnboardingRoute() {
 
         <BankIdFoundationStatus />
 
-        <section className="grid gap-6 lg:grid-cols-3">
+        <section className="grid gap-6 lg:grid-cols-2">
+          <BankIdEntryCard
+            title="Continue on this device"
+            description="Start an auth order and receive a BankID deep link that can launch the app on the current device."
+            flow="same-device"
+            actionLabel="Start on this device"
+            disabled={startDisabled}
+            pending={isStartingSameDevice}
+            onStart={handleStart}
+          />
+          <BankIdEntryCard
+            title="Use another device"
+            description="Start a QR-based auth order now. The QR animation itself will be added in the next phase."
+            flow="qr"
+            actionLabel="Start QR flow"
+            disabled={startDisabled}
+            pending={isStartingQr}
+            onStart={handleStart}
+          />
+        </section>
+
+        {activeOrder ? (
+          <BankIdStatusPanel order={activeOrder} onRestart={resetStartState} />
+        ) : null}
+
+        {startError ? (
+          <BankIdErrorPanel message={startError} onDismiss={resetStartState} />
+        ) : null}
+
+        <section className="grid gap-6 lg:grid-cols-2">
           {nextStages.map((item) => (
             <BankIdStageCard
               key={item.stage}

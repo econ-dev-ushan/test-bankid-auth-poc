@@ -19,3 +19,26 @@ export async function getJson<T>(path: string, options?: RequestOptions): Promis
 
   return (await response.json()) as T
 }
+
+export async function postJson<TResponse, TBody>(
+  path: string,
+  body: TBody,
+  options?: RequestOptions,
+): Promise<TResponse> {
+  const response = await fetch(`${appConfig.apiBaseUrl}${path}`, {
+    ...options,
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(options?.headers ?? {}),
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`)
+  }
+
+  return (await response.json()) as TResponse
+}

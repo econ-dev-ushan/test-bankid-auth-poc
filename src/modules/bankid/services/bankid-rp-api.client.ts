@@ -1,8 +1,21 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { existsSync, readFileSync } from 'node:fs';
-import { Agent } from 'node:https';
-import type { BankIdClientDiagnostics } from '../types/bankid.types';
+import { Agent, request as httpsRequest } from 'node:https';
+import { z } from 'zod';
+import type {
+  BankIdAuthApiRequest,
+  BankIdAuthApiResponse,
+  BankIdClientDiagnostics,
+  BankIdSystemCallContext,
+} from '../types/bankid.types';
+
+const bankIdAuthResponseSchema = z.object({
+  orderRef: z.string().min(1),
+  autoStartToken: z.string().min(1),
+  qrStartToken: z.string().min(1),
+  qrStartSecret: z.string().min(1),
+});
 
 @Injectable()
 export class BankIdRpApiClient implements OnModuleInit {
@@ -58,8 +71,130 @@ export class BankIdRpApiClient implements OnModuleInit {
     return this.agent;
   }
 
+  async auth(
+    payload: BankIdAuthApiRequest,
+    context: BankIdSystemCallContext,
+  ): Promise<BankIdAuthApiResponse> {
+    const response = await this.postJson('/auth', payload, context);
+    return bankIdAuthResponseSchema.parse(response);
+  }
+
   private isEnabled() {
     return this.configService.get<boolean>('BANKID_ENABLED', false);
+  }
+
+  private async postJson(
+    path: string,
+    payload: unknown,
+    context: BankIdSystemCallContext,
+  ) {
+    const baseUrl = this.configService.getOrThrow<string>('BANKID_API_BASE_URL');
+    const rpApiPrefix =
+      this.configService.getOrThrow<string>('BANKID_RP_API_PREFIX');
+    const requestTimeoutMs = this.configService.getOrThrow<number>(
+      'BANKID_REQUEST_TIMEOUT_MS',
+    );
+    const targetUrl = new URL(`${rpApiPrefix}${path}`, baseUrl);
+    const body = JSON.stringify(payload);
+    const startedAt = Date.now();
+
+    this.logger.log(
+      JSON.stringify({
+        event: 'bankid_request_outgoing',
+        system: 'bankid',
+        operation: context.operation,
+        path,
+        correlationId: context.correlationId,
+        orderId: context.orderId ?? null,
+      }),
+    );
+
+    return new Promise<unknown>((resolve, reject) => {
+      const request = httpsRequest(
+        targetUrl,
+        {
+          method: 'POST',
+          agent: this.getAgent(),
+          headers: {
+            'content-type': 'application/json',
+            'content-length': Buffer.byteLength(body),
+          },
+          timeout: requestTimeoutMs,
+        },
+        (response) => {
+          const chunks: Buffer[] = [];
+
+          response.on('data', (chunk) => {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          });
+
+          response.on('end', () => {
+            const responseBody = Buffer.concat(chunks).toString('utf8');
+            const parsedBody = responseBody ? JSON.parse(responseBody) : {};
+
+            if ((response.statusCode ?? 500) >= 400) {
+              this.logger.error(
+                JSON.stringify({
+                  event: 'bankid_request_failed',
+                  system: 'bankid',
+                  operation: context.operation,
+                  path,
+                  correlationId: context.correlationId,
+                  orderId: context.orderId ?? null,
+                  statusCode: response.statusCode ?? 500,
+                  durationMs: Date.now() - startedAt,
+                }),
+              );
+              reject(
+                new Error(
+                  `BankID request failed with status ${response.statusCode ?? 500}.`,
+                ),
+              );
+              return;
+            }
+
+            this.logger.log(
+              JSON.stringify({
+                event: 'bankid_request_completed',
+                system: 'bankid',
+                operation: context.operation,
+                path,
+                correlationId: context.correlationId,
+                orderId: context.orderId ?? null,
+                statusCode: response.statusCode ?? 200,
+                durationMs: Date.now() - startedAt,
+              }),
+            );
+            resolve(parsedBody);
+          });
+        },
+      );
+
+      request.on('timeout', () => {
+        request.destroy(
+          new Error(`BankID request timed out after ${requestTimeoutMs}ms.`),
+        );
+      });
+
+      request.on('error', (error) => {
+        this.logger.error(
+          JSON.stringify({
+            event: 'bankid_request_failed',
+            system: 'bankid',
+            operation: context.operation,
+            path,
+            correlationId: context.correlationId,
+            orderId: context.orderId ?? null,
+            reason: error.message,
+            durationMs: Date.now() - startedAt,
+          }),
+        );
+        reject(error);
+      });
+
+      request.write(body);
+      request.end();
+    });
   }
 
   private readRequiredFile(envKey: 'BANKID_PFX_PATH' | 'BANKID_CA_PATH') {
