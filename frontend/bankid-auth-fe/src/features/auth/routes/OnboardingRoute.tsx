@@ -7,15 +7,10 @@ import { BankIdStageCard } from '../components/BankIdStageCard'
 import { BankIdStatusPanel } from '../components/BankIdStatusPanel'
 import { useBankIdFoundation } from '../hooks/useBankIdFoundation'
 import { useBankIdStart } from '../hooks/useBankIdStart'
+import { useBankIdStatus } from '../hooks/useBankIdStatus'
 import type { BankIdFlow, BankIdStartResponse } from '../lib/bankidTypes'
 
 const nextStages = [
-  {
-    stage: 'Stage 3',
-    title: 'Animated QR support',
-    description:
-      'The backend will own QR secret handling and the frontend will render refreshed QR frames only.',
-  },
   {
     stage: 'Stage 4+',
     title: 'Polling, cancel, completion',
@@ -29,6 +24,11 @@ export function OnboardingRoute() {
   const startMutation = useBankIdStart()
   const [activeOrder, setActiveOrder] = useState<BankIdStartResponse | null>(null)
   const [startError, setStartError] = useState<string | null>(null)
+  const qrStatusQuery = useBankIdStatus(
+    activeOrder?.orderId ?? null,
+    activeOrder?.flow === 'qr',
+    activeOrder?.qr?.refreshIntervalMs ?? 1000,
+  )
 
   async function handleStart(flow: BankIdFlow) {
     setStartError(null)
@@ -69,8 +69,8 @@ export function OnboardingRoute() {
                 Building the backend-owned BankID flow one safe stage at a time.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-slate-200/82">
-                Phase 2 is now focused on actually starting same-device and QR-based
-                authentication from <code>/onboarding</code> through our backend.
+                Phase 3 adds backend-owned animated QR support so another-device BankID
+                authentication can update safely on <code>/onboarding</code>.
               </p>
             </div>
             <div className="rounded-[28px] border border-amber-200/18 bg-slate-950/32 p-6">
@@ -79,8 +79,8 @@ export function OnboardingRoute() {
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-200/84">
                 <li>Dedicated backend auth-start endpoint and local order persistence</li>
-                <li>Frontend same-device and QR start actions using React Query</li>
-                <li>Initial pending-state rendering before polling and animated QR support</li>
+                <li>Animated QR frames generated on the backend from BankID start artifacts</li>
+                <li>Frontend QR polling that refreshes the displayed code without exposing secrets</li>
               </ul>
             </div>
           </div>
@@ -100,7 +100,7 @@ export function OnboardingRoute() {
           />
           <BankIdEntryCard
             title="Use another device"
-            description="Start a QR-based auth order now. The QR animation itself will be added in the next phase."
+            description="Start a QR-based auth order and render the animated BankID QR code from backend responses."
             flow="qr"
             actionLabel="Start QR flow"
             disabled={startDisabled}
@@ -110,7 +110,11 @@ export function OnboardingRoute() {
         </section>
 
         {activeOrder ? (
-          <BankIdStatusPanel order={activeOrder} onRestart={resetStartState} />
+          <BankIdStatusPanel
+            order={activeOrder}
+            status={qrStatusQuery.data}
+            onRestart={resetStartState}
+          />
         ) : null}
 
         {startError ? (

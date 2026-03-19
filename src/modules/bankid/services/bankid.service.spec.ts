@@ -62,7 +62,7 @@ describe('BankIdService.startAuth', () => {
     const response = await service.startAuth({ flow: 'qr' }, '127.0.0.1');
 
     expect(response.flow).toBe('qr');
-    expect(response.qr?.imageDataUrl).toBeNull();
+    expect(response.qr?.imageDataUrl.startsWith('data:image/png;base64,')).toBe(true);
     expect(response.qr?.refreshIntervalMs).toBe(1000);
     expect(response.status.message).toBe('Open your BankID app to continue.');
   });

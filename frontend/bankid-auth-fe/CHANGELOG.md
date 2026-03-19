@@ -9,3 +9,4 @@
 ### Changed
 - Phase 2 now starts same-device and QR auth flows from `/onboarding` and renders the initial pending state from the backend response.
 - Same-device starts now expose an explicit "Open BankID" action instead of trying to auto-launch unexpectedly.
+- Phase 3 now renders animated QR images from backend status polling for another-device BankID flows.

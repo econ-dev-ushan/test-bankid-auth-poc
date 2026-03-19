@@ -1,17 +1,24 @@
-import type { BankIdStartResponse } from '../lib/bankidTypes'
+import type { BankIdStartResponse, BankIdStatusResponse } from '../lib/bankidTypes'
+import { BankIdQrPanel } from './BankIdQrPanel'
 import { BankIdStageCard } from './BankIdStageCard'
 
 interface BankIdStatusPanelProps {
   order: BankIdStartResponse
+  status?: BankIdStatusResponse
   onRestart: () => void
 }
 
-export function BankIdStatusPanel({ order, onRestart }: BankIdStatusPanelProps) {
+export function BankIdStatusPanel({ order, status, onRestart }: BankIdStatusPanelProps) {
+  const displayState = status?.state ?? order.status.state
+  const displayHintCode = status?.hintCode ?? order.status.hintCode
+  const displayMessage = status?.message ?? order.status.message
+  const displayQr = status?.qr ?? order.qr
+
   return (
     <BankIdStageCard
       eyebrow="Active order"
       title={order.flow === 'same-device' ? 'Same-device flow started' : 'QR flow started'}
-      description={order.status.message}
+      description={displayMessage}
       footer={
         <button
           type="button"
@@ -29,11 +36,11 @@ export function BankIdStatusPanel({ order, onRestart }: BankIdStatusPanelProps) 
         </div>
         <div>
           <dt className="text-slate-400">State</dt>
-          <dd className="capitalize">{order.status.state}</dd>
+          <dd className="capitalize">{displayState}</dd>
         </div>
         <div>
           <dt className="text-slate-400">Hint code</dt>
-          <dd>{order.status.hintCode ?? 'None'}</dd>
+          <dd>{displayHintCode ?? 'None'}</dd>
         </div>
         <div>
           <dt className="text-slate-400">Flow</dt>
@@ -55,14 +62,18 @@ export function BankIdStatusPanel({ order, onRestart }: BankIdStatusPanelProps) 
         </div>
       ) : null}
 
-      {order.qr ? (
+      {displayQr?.imageDataUrl ? (
+        <BankIdQrPanel
+          imageDataUrl={displayQr.imageDataUrl}
+          refreshAt={displayQr.refreshAt}
+        />
+      ) : displayQr ? (
         <div className="mt-6 rounded-[24px] border border-white/10 bg-slate-950/28 p-5">
           <p className="text-sm leading-6 text-slate-200/84">
-            The QR order is active and ready. Animated QR rendering lands in Phase 3, but the
-            backend is already returning the local order id and QR refresh cadence.
+            The QR order is active, but the QR frame is still being prepared by the backend.
           </p>
           <p className="mt-3 text-xs uppercase tracking-[0.24em] text-amber-200/75">
-            Refresh interval {order.qr.refreshIntervalMs} ms
+            Refresh interval {displayQr.refreshIntervalMs} ms
           </p>
         </div>
       ) : null}

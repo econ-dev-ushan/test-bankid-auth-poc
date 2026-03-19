@@ -177,6 +177,8 @@ export class BankIdRpApiClient implements OnModuleInit {
       });
 
       request.on('error', (error) => {
+        const tlsHint = this.getTlsDiagnosticHint(error.message);
+
         this.logger.error(
           JSON.stringify({
             event: 'bankid_request_failed',
@@ -186,6 +188,7 @@ export class BankIdRpApiClient implements OnModuleInit {
             correlationId: context.correlationId,
             orderId: context.orderId ?? null,
             reason: error.message,
+            hint: tlsHint,
             durationMs: Date.now() - startedAt,
           }),
         );
@@ -205,5 +208,23 @@ export class BankIdRpApiClient implements OnModuleInit {
     }
 
     return readFileSync(filePath);
+  }
+
+  private getTlsDiagnosticHint(errorMessage: string) {
+    const normalizedMessage = errorMessage.toLowerCase();
+
+    if (normalizedMessage.includes('self-signed certificate in certificate chain')) {
+      return 'Possible TLS interception/proxy on the network path or BANKID_CA_PATH does not match the BankID test server CA.';
+    }
+
+    if (normalizedMessage.includes('unsupported pkcs12 pfx data')) {
+      return 'The configured PKCS#12 file is likely not compatible with this Node/OpenSSL runtime. Prefer the modern .p12 BankID test certificate.';
+    }
+
+    if (normalizedMessage.includes('mac verify failure')) {
+      return 'The PKCS#12 certificate password is likely incorrect, or the certificate file does not match the configured passphrase.';
+    }
+
+    return undefined;
   }
 }

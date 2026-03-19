@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { HealthResponseDto } from '../dto/health.response.dto';
 import { StartAuthRequestDto } from '../dto/start-auth.request.dto';
 import { StartAuthResponseDto } from '../dto/start-auth.response.dto';
+import { StatusResponseDto } from '../dto/status.response.dto';
 import { BankIdService } from '../services/bankid.service';
 
 @Controller('api/bankid')
@@ -20,6 +21,11 @@ export class BankIdController {
     @Req() request: Request,
   ): Promise<StartAuthResponseDto> {
     return this.bankIdService.startAuth(body, this.resolveEndUserIp(request));
+  }
+
+  @Get('orders/:orderId')
+  getOrderStatus(@Param('orderId') orderId: string): Promise<StatusResponseDto> {
+    return this.bankIdService.getOrderStatus(orderId);
   }
 
   private resolveEndUserIp(request: Request) {

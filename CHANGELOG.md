@@ -15,6 +15,8 @@
 - The frontend `/onboarding` page now starts same-device and QR auth flows, renders the initial pending status, and shows the deep link action for same-device starts.
 - Backend now logs incoming HTTP requests and completed responses with method, path, IP, status code, and duration for local observability.
 - Backend now also logs outbound BankID RP API calls with minimal structured metadata for request start, completion, and failure events.
+- Phase 3 now generates animated QR frames on the backend, exposes `GET /api/bankid/orders/:orderId`, and refreshes QR rendering on the frontend without exposing QR secrets.
+- Backend BankID TLS failures now log targeted diagnostic hints for common certificate-chain, PKCS#12, and passphrase setup errors.
 
 ### Docs
 - Recorded request-level backend logging as an ongoing convention for future BankID feature implementations.

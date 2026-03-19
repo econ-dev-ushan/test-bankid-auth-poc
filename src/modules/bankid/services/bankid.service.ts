@@ -1,4 +1,9 @@
-import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { mapHintCodeToUserMessage } from '../utils/bankid-user-message.mapper';
@@ -92,6 +97,16 @@ export class BankIdService {
     return this.toStartAuthResponse(localOrder);
   }
 
+  async getOrderStatus(orderId: string) {
+    const order = this.bankIdOrderStoreService.get(orderId);
+
+    if (!order) {
+      throw new NotFoundException('BankID order not found.');
+    }
+
+    return this.toStatusResponse(order);
+  }
+
   private isBankIdEnabled() {
     return this.configService.get<boolean>('BANKID_ENABLED', false);
   }
@@ -157,7 +172,7 @@ export class BankIdService {
     };
   }
 
-  private toStartAuthResponse(order: BankIdLocalOrder) {
+  private async toStartAuthResponse(order: BankIdLocalOrder) {
     const response = {
       orderId: order.orderId,
       flow: order.flow,
@@ -184,10 +199,19 @@ export class BankIdService {
 
     return {
       ...response,
-      qr: {
-        imageDataUrl: null,
-        refreshIntervalMs: this.bankIdQrService.getRefreshIntervalMs(),
-      },
+      qr: await this.bankIdQrService.generateQrPayload(order),
+    };
+  }
+
+  private async toStatusResponse(order: BankIdLocalOrder) {
+    return {
+      orderId: order.orderId,
+      flow: order.flow,
+      state: order.status,
+      hintCode: order.hintCode,
+      message: order.message,
+      qr: await this.bankIdQrService.generateQrPayload(order),
+      completion: order.completionData,
     };
   }
 
