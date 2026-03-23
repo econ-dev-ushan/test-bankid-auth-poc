@@ -4,22 +4,12 @@ import { BankIdEntryCard } from '../components/BankIdEntryCard'
 import { BankIdErrorPanel } from '../components/BankIdErrorPanel'
 import { BankIdFoundationStatus } from '../components/BankIdFoundationStatus'
 import { BankIdResultPanel } from '../components/BankIdResultPanel'
-import { BankIdStageCard } from '../components/BankIdStageCard'
 import { BankIdStatusPanel } from '../components/BankIdStatusPanel'
 import { useBankIdCancel } from '../hooks/useBankIdCancel'
 import { useBankIdFoundation } from '../hooks/useBankIdFoundation'
 import { useBankIdStart } from '../hooks/useBankIdStart'
 import { useBankIdStatus } from '../hooks/useBankIdStatus'
 import type { BankIdFlow, BankIdStartResponse } from '../lib/bankidTypes'
-
-const nextStages = [
-  {
-    stage: 'Stage 8',
-    title: 'Persistence and hardening',
-    description:
-      'The next increment can replace the in-memory order store, tighten production safeguards, and keep the staged rollout moving.',
-  },
-]
 
 export function OnboardingRoute() {
   const foundationQuery = useBankIdFoundation()
@@ -113,8 +103,8 @@ export function OnboardingRoute() {
                 Building the backend-owned BankID flow one safe stage at a time.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-slate-200/82">
-                Phase 7 hardens the BankID flow with backend e2e coverage, frontend route
-                tests, and clearer error messages from backend failures.
+                Phase 8 hardens the backend lifecycle with TTL-based order retention,
+                predictable expired-order cleanup, and explicit HTTP exception mapping.
               </p>
             </div>
             <div className="rounded-[28px] border border-amber-200/18 bg-slate-950/32 p-6">
@@ -122,9 +112,9 @@ export function OnboardingRoute() {
                 What is live now
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-200/84">
-                <li>Backend e2e coverage for health, start, status, and cancel flow regressions</li>
-                <li>Frontend route coverage for start, success, cancel, and QR fallback states</li>
-                <li>HTTP error parsing that surfaces backend messages instead of generic status codes</li>
+                <li>In-memory orders now expire predictably using the configured backend TTL</li>
+                <li>Expired orders are pruned cleanly and return a stable 404 response contract</li>
+                <li>HTTP exception handling is explicit, structured, and consistent across test and app runs</li>
               </ul>
             </div>
           </div>
@@ -211,21 +201,6 @@ export function OnboardingRoute() {
         {startError ? (
           <BankIdErrorPanel message={startError} onDismiss={resetStartState} />
         ) : null}
-
-        <section className="grid gap-6 lg:grid-cols-2">
-          {nextStages.map((item) => (
-            <BankIdStageCard
-              key={item.stage}
-              eyebrow={item.stage}
-              title={item.title}
-              description={item.description}
-            >
-              <p className="text-sm leading-6 text-slate-300/78">
-                This stage is intentionally held until you approve the next increment.
-              </p>
-            </BankIdStageCard>
-          ))}
-        </section>
       </div>
     </main>
   )

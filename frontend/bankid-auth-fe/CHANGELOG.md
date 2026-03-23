@@ -14,3 +14,4 @@
 - Phase 5 now shows a dedicated success screen with normalized identity details and the raw completion payload for POC debugging.
 - Phase 6 now supports cancelling pending orders and retrying same-device failures through a direct QR fallback action.
 - Phase 7 now adds Vitest route coverage for the onboarding flow, improves HTTP error messaging, and updates the page copy to reflect the new hardening stage.
+- Phase 8 keeps the frontend contract unchanged while updating the onboarding copy for the new backend retention hardening and continuing to rely on stable backend error payloads.

@@ -214,6 +214,7 @@ export class BankIdService {
       lastCollectedAt: now,
       completedAt: snapshot.state === 'complete' ? now : order.completedAt,
       cancelledAt: snapshot.state === 'cancelled' ? now : order.cancelledAt,
+      failedAt: snapshot.state === 'failed' ? now : order.failedAt,
       completionData:
         snapshot.state === 'complete'
           ? this.bankIdCompletionService.normalizeCompletionData(

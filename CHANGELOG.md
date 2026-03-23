@@ -21,6 +21,7 @@
 - Phase 5 now normalizes completion data on the backend and renders a dedicated success/result view on the frontend with both structured identity details and raw POC payload output.
 - Phase 6 now exposes order cancellation, persists cancelled state transitions, and adds frontend fallback from same-device launch to QR retry.
 - Phase 7 now adds backend e2e regression coverage for the BankID lifecycle, frontend route tests for the onboarding states, and clearer frontend propagation of backend error messages.
+- Phase 8 now adds TTL-based in-memory order cleanup, terminal `failedAt` retention tracking, and a global HTTP exception filter that keeps expired-order and validation errors in a stable response shape.
 
 ### Docs
 - Recorded request-level backend logging as an ongoing convention for future BankID feature implementations.

@@ -29,8 +29,12 @@ describe('BankIdService', () => {
     }),
   } as unknown as BankIdRpApiClient;
 
+  function createOrderStore() {
+    return new BankIdOrderStoreService(configService);
+  }
+
   it('returns same-device launch data and saves the order', async () => {
-    const orderStore = new BankIdOrderStoreService();
+    const orderStore = createOrderStore();
     const qrService = new BankIdQrService(configService);
     const service = new BankIdService(
       configService,
@@ -53,7 +57,7 @@ describe('BankIdService', () => {
   });
 
   it('returns qr metadata for another-device flow', async () => {
-    const orderStore = new BankIdOrderStoreService();
+    const orderStore = createOrderStore();
     const qrService = new BankIdQrService(configService);
     const service = new BankIdService(
       configService,
@@ -72,7 +76,7 @@ describe('BankIdService', () => {
   });
 
   it('progresses a same-device order through collect states', async () => {
-    const orderStore = new BankIdOrderStoreService();
+    const orderStore = createOrderStore();
     const qrService = new BankIdQrService(configService);
     const service = new BankIdService(
       configService,
@@ -103,7 +107,7 @@ describe('BankIdService', () => {
   });
 
   it('progresses a qr order to completion with refreshed QR data', async () => {
-    const orderStore = new BankIdOrderStoreService();
+    const orderStore = createOrderStore();
     const qrService = new BankIdQrService(configService);
     const service = new BankIdService(
       configService,
@@ -134,7 +138,7 @@ describe('BankIdService', () => {
   });
 
   it('cancels a pending order and returns cancelled state', async () => {
-    const orderStore = new BankIdOrderStoreService();
+    const orderStore = createOrderStore();
     const qrService = new BankIdQrService(configService);
     const service = new BankIdService(
       configService,
@@ -152,5 +156,24 @@ describe('BankIdService', () => {
     expect(cancelled.state).toBe('cancelled');
     expect(cancelled.hintCode).toBe('userCancel');
     expect(cancelled.message).toBe('The BankID authentication was cancelled.');
+  });
+
+  it('returns not found after an order has expired out of the store', async () => {
+    const orderStore = createOrderStore();
+    const qrService = new BankIdQrService(configService);
+    const service = new BankIdService(
+      configService,
+      bankIdRpApiClient,
+      orderStore,
+      qrService,
+      completionService,
+    );
+
+    const response = await service.startAuth({ flow: 'same-device' }, '127.0.0.1');
+    orderStore.pruneExpiredOrders(new Date(Date.now() + 301_000));
+
+    await expect(service.getOrderStatus(response.orderId)).rejects.toThrow(
+      'BankID order not found.',
+    );
   });
 });

@@ -54,6 +54,7 @@ export interface BankIdLocalOrder {
   lastCollectedAt?: string;
   completedAt?: string;
   cancelledAt?: string;
+  failedAt?: string;
   autoStartToken?: string;
   qrStartToken?: string;
   qrStartSecret?: string;

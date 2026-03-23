@@ -163,6 +163,22 @@ describe('App and BankID flow (e2e)', () => {
     expect(statusResponse.body.hintCode).toBe('userCancel');
   });
 
+  it('returns not found after an order expires out of the in-memory store', async () => {
+    const authResponse = await request(app.getHttpServer())
+      .post('/api/bankid/auth')
+      .send({ flow: 'same-device' })
+      .expect(201);
+
+    const orderStore = moduleFixture.get(BankIdOrderStoreService);
+    orderStore.pruneExpiredOrders(new Date(Date.now() + 301_000));
+
+    const statusResponse = await request(app.getHttpServer())
+      .get(`/api/bankid/orders/${authResponse.body.orderId}`)
+      .expect(404);
+
+    expect(statusResponse.body.message).toBe('BankID order not found.');
+  });
+
   it('rejects unsupported flow values with validation errors', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/bankid/auth')
